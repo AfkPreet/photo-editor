@@ -19,11 +19,11 @@ npm run preview    # serve dist/ on :4173
 ## Deploy
 
 **GitHub Pages (default).** `.github/workflows/pages.yml` builds on every push to
-`main` and publishes `dist/` to https://afkpreet.github.io/photo-editor/. The
-workflow enables Pages on first run; if it fails on that step, set Settings →
-Pages → Source to "GitHub Actions" and re-run. The build sets
-`BASE_PATH=/photo-editor/` so assets, the service worker and the detector
-weights resolve under the sub-path.
+`main` and force-pushes `dist/` to the `gh-pages` branch, which GitHub serves at
+https://afkpreet.github.io/photo-editor/. If the site does not appear after the
+first run, set Settings → Pages → Source to "Deploy from a branch", branch
+`gh-pages`, folder `/ (root)`. The build sets `BASE_PATH=/photo-editor/` so
+assets, the service worker and the detector weights resolve under the sub-path.
 
 **Vercel (optional).** Import the repo; framework "Vite", build `npm run build`,
 output `dist`, no `BASE_PATH`.
