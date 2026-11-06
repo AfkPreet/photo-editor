@@ -157,7 +157,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <img src="/icon.svg" alt="" width={22} height={22} />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={22} height={22} />
           {APP_NAME}
           {screen !== 'upload' && image && <small>· {image.name}</small>}
         </div>

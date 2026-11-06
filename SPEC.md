@@ -66,5 +66,7 @@ npm run build      # dist/
 npm run preview
 ```
 
-Deploy: Vercel static project pointing at this repo, build `npm run build`,
-output `dist`.
+Deploy: GitHub Pages via `.github/workflows/pages.yml` on push to `main`
+(https://afkpreet.github.io/photo-editor/). Vercel works too (import the repo,
+Vite preset). Decision 9: GitHub Pages chosen because the Vercel connector could
+not create projects (403) and Pages needs no extra account.

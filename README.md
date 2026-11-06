@@ -18,7 +18,16 @@ npm run preview    # serve dist/ on :4173
 
 ## Deploy
 
-Static site. On Vercel: framework "Vite", build `npm run build`, output `dist`.
+**GitHub Pages (default).** `.github/workflows/pages.yml` builds on every push to
+`main` and publishes `dist/` to https://afkpreet.github.io/photo-editor/. The
+workflow enables Pages on first run; if it fails on that step, set Settings →
+Pages → Source to "GitHub Actions" and re-run. The build sets
+`BASE_PATH=/photo-editor/` so assets, the service worker and the detector
+weights resolve under the sub-path.
+
+**Vercel (optional).** Import the repo; framework "Vite", build `npm run build`,
+output `dist`, no `BASE_PATH`.
+
 The detector weights live in `public/models/` and are served with the site.
 
 ## Layout

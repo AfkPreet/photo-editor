@@ -19,7 +19,7 @@ export const DETECT_DEFAULTS: Params = {
   keepPhoto: true,
 };
 
-const LOCAL_MODEL_URL = '/models/ssdlite_mobilenet_v2/model.json';
+const LOCAL_MODEL_URL = `${import.meta.env.BASE_URL}models/ssdlite_mobilenet_v2/model.json`;
 
 let modelPromise: Promise<ObjectDetection> | null = null;
 
