@@ -1,16 +1,18 @@
 import type { CropRect } from './image';
 
-export type AspectId = 'original' | '4:5' | '1:1' | '3:4' | '2:3' | '3:2' | '16:9' | '9:16';
+export type AspectId = 'original' | '1:1' | '4:5' | '5:4' | '3:4' | '2:3' | '3:2' | '16:9' | '9:16' | '2.39:1';
 
 export const ASPECTS: { id: AspectId; label: string; ratio?: number }[] = [
   { id: 'original', label: 'Original' },
-  { id: '4:5', label: '4:5', ratio: 4 / 5 },
   { id: '1:1', label: '1:1', ratio: 1 },
+  { id: '4:5', label: '4:5', ratio: 4 / 5 },
+  { id: '5:4', label: '5:4', ratio: 5 / 4 },
   { id: '3:4', label: '3:4', ratio: 3 / 4 },
   { id: '2:3', label: '2:3', ratio: 2 / 3 },
   { id: '3:2', label: '3:2', ratio: 3 / 2 },
   { id: '16:9', label: '16:9', ratio: 16 / 9 },
   { id: '9:16', label: '9:16', ratio: 9 / 16 },
+  { id: '2.39:1', label: '2.39:1', ratio: 2.39 },
 ];
 
 /** Crop state kept resolution-independent: centre as fractions, zoom as fraction of the largest fitting rect. */

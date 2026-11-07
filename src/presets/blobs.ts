@@ -261,6 +261,7 @@ export async function renderBlobs(input: RenderInput): Promise<AnyCanvas> {
 export const blobsPreset: Preset = {
   id: 'blobs',
   name: 'Blobs',
+  category: 'vision',
   tagline: 'Bright or coloured regions become boxes, dots, links and labels, like a vision debug view.',
   defaults: BLOBS_DEFAULTS,
   controls: [

@@ -20,6 +20,43 @@ Owner: Preet (afkpreet/photo-editor). Built with Claude Code, Nov 2026.
 | 7 | In-browser COCO-SSD (TF.js) for detection boxes, model self-hosted | Server-side YOLO, OpenCV.js | No backend, no per-image cost, works offline once cached; TF.js only loads when Detect is opened |
 | 8 | Global crop step (aspect presets, drag + zoom) shared by all presets | Per-preset crop with corner handles | Works on touch, one mental model |
 
+## Phase 2 decisions (Nov 2026)
+
+| # | Decision | Rejected | Why |
+|---|----------|----------|-----|
+| 10 | One parametric film engine (`src/engine/film.ts`); every colour and mono look is a parameter set in `src/presets/looks.ts` | A hand-written pipeline per look | Looks become data: adding one is a 10-line entry, and every slider works for every look |
+| 11 | Looks are interpretations of published bodies of work, built from our own curves, credited by name | Copying LUTs or training on the photographers' images | A look is not copyrightable; their images are. Names are credits, not endorsements |
+| 12 | Look strip with live thumbnails of the user's own photo, filtered by category | Tabs per preset | 21 presets do not fit in tabs; a thumbnail is the fastest way to choose |
+| 13 | Collapsible control groups, Tone open by default | One long slider list | 45 sliders per look is a wall; grouped, the common ones stay one tap away |
+| 14 | Clarity, soft focus, bloom and halation run on a ≤320 px downscale and are composited back | Full-resolution blurs | Same look, 20× cheaper; iPad exports stay around a second |
+| 15 | Detect keeps a static icon instead of a live thumbnail | Running the model for the strip | Loading 18 MB and running inference just to draw a 92 px card is not worth it |
+
+### Looks
+
+| Look | Category | Inspired by | Signature in the engine |
+|------|----------|-------------|-------------------------|
+| Moody teal | colour | the skeletorwun.com grading study | cool WB, navy/teal split tone, cream highlights |
+| Kodachrome | colour | Steve McCurry, Fred Herzog | reds and blues up, warm skin, crisp, little grain |
+| Dye transfer | colour | William Eggleston | dense reds, pastel glow, gentle contrast |
+| Painterly | colour | Saul Leiter | muted, warm, soft focus, bloom, reds kept |
+| Layered light | colour | Alex Webb | crushed shadows, saturated light, clarity |
+| Cape light | colour | Joel Meyerowitz | open shadows, pastel sky, no grain, 4:5 |
+| Slide film | colour | Galen Rowell, Frans Lanting | Velvia-style greens and blues, clarity |
+| Snapshot flash | colour | Nan Goldin, Martin Parr | saturated, warm, strong vignette, grain, halation |
+| Twilight cinema | colour | Gregory Crewdson, Todd Hido | teal shadows, sodium highlights, bloom, 2.39:1 |
+| Pastel light | colour | Rinko Kawauchi | overexposed, lifted blacks, bloom, square |
+| Tungsten night | colour | CineStill 800T street work | teal shadows, red halation, grain |
+| Zone system | mono | Ansel Adams | red-filter mix, full scale, clarity, 4:5 |
+| Decisive moment | mono | Henri Cartier-Bresson | neutral mix, soft grain, black border, 3:2 |
+| Genesis | mono | Sebastião Salgado | deep blacks, glowing highlights, heavy grain, vignette |
+| Are bure boke | mono | Daido Moriyama | blown whites, crushed blacks, soft focus, coarse grain |
+| Rolleiflex square | mono | Vivian Maier | gentle contrast, fine grain, square |
+| Geometry of light | mono | Fan Ho | hard contrast, crushed darks, warm paper, square |
+| Platinum | mono | Irving Penn's platinum prints | long scale, warm brown blacks, wide white border, 4:5 |
+
+Plus Cut-out (graphic), Blobs and Detect (vision) from phase 1. Cut-out can
+apply any look first.
+
 ## Presets (phase 1)
 
 1. **Film grade** — tone curve (contrast, fade, shadows, highlights), temperature,
@@ -46,6 +83,10 @@ hold-to-compare with the original, export PNG/JPEG at full resolution (capped at
 Phase 1 built and verified with Playwright on desktop and iPhone viewports:
 upload → each preset → export. Grade defaults were tuned numerically against the
 public before/after frame (RMSE 40 → 18 on that frame).
+
+Phase 2 (film engine, 18 looks, look strip with live thumbnails, collapsible
+controls) built and verified the same way on a sample of looks plus Cut-out and
+Detect, locally and on the live GitHub Pages site.
 
 ## Phase 2 (not built yet)
 

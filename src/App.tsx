@@ -2,20 +2,25 @@ import { useCallback, useEffect, useState } from 'react';
 import { loadImageFile, resizeBitmap, drawCropped, fitWithin, PREVIEW_MAX, downloadBlob, canShareFiles, shareBlob, type LoadedImage } from './lib/image';
 import { DEFAULT_CROP, resolveCrop, closestAspect, type CropState } from './lib/crop';
 import { canvasToBlob, makeCanvas, ctx2d, type AnyCanvas } from './lib/canvas';
-import { PRESETS, getPreset } from './presets';
-import type { Params } from './presets/types';
+import { PRESETS, CATEGORIES, getPreset } from './presets';
+import type { Params, Category } from './presets/types';
 import { Dropzone } from './ui/Dropzone';
 import { Controls } from './ui/Controls';
 import { CropEditor } from './ui/CropEditor';
 import { Preview } from './ui/Preview';
+import { LookStrip } from './ui/LookStrip';
 
 type Screen = 'upload' | 'edit' | 'crop';
 
 const APP_NAME = 'Negative Space';
+const THUMB_MAX = 144;
 
 function initialParams(): Record<string, Params> {
   return Object.fromEntries(PRESETS.map((p) => [p.id, { ...p.defaults }]));
 }
+
+const CREDITS =
+  'Looks are inspired by the published work of Ansel Adams, Henri Cartier-Bresson, Sebastião Salgado, Daido Moriyama, Vivian Maier, Fan Ho, Irving Penn, Steve McCurry, Fred Herzog, William Eggleston, Saul Leiter, Alex Webb, Joel Meyerowitz, Galen Rowell, Frans Lanting, Rinko Kawauchi, Gregory Crewdson, Todd Hido, Nan Goldin and Martin Parr, and by the studies at skeletorwun.com. Names are credits, not endorsements. Independent project.';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('upload');
@@ -27,7 +32,9 @@ export default function App() {
   const [crop, setCrop] = useState<CropState>(DEFAULT_CROP);
   const [cropTouched, setCropTouched] = useState(false);
   const [presetId, setPresetId] = useState(PRESETS[0].id);
+  const [category, setCategory] = useState<Category | 'all'>('all');
   const [allParams, setAllParams] = useState<Record<string, Params>>(initialParams);
+  const [thumbs, setThumbs] = useState<Record<string, AnyCanvas>>({});
 
   const [rendered, setRendered] = useState<AnyCanvas | null>(null);
   const [sourcePreview, setSourcePreview] = useState<AnyCanvas | null>(null);
@@ -57,6 +64,7 @@ export default function App() {
       });
       setCrop(DEFAULT_CROP);
       setCropTouched(false);
+      setThumbs({});
       setStatus(null);
       setScreen('edit');
     } catch (e) {
@@ -117,6 +125,36 @@ export default function App() {
     };
   }, [image, preview, crop, preset, params, screen]);
 
+  // Live thumbnails for the look strip: every look rendered on a tiny copy of the current crop.
+  useEffect(() => {
+    if (!image || !preview || screen === 'upload') return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const full = resolveCrop(crop, image.width, image.height);
+      const s = preview.width / image.width;
+      const out = fitWithin(full.w, full.h, THUMB_MAX);
+      const base = drawCropped(preview, { x: full.x * s, y: full.y * s, w: full.w * s, h: full.h * s }, out.w, out.h);
+      const next: Record<string, AnyCanvas> = {};
+      for (const p of PRESETS) {
+        if (p.thumbnail === false) continue;
+        if (cancelled) return;
+        const copy = makeCanvas(out.w, out.h);
+        ctx2d(copy).drawImage(base as CanvasImageSource, 0, 0);
+        try {
+          next[p.id] = await p.render({ source: copy, width: out.w, height: out.h, fullRes: false, scale: out.w / full.w, params: p.defaults });
+        } catch {
+          /* a failing thumbnail just stays empty */
+        }
+        await new Promise((r) => setTimeout(r, 0));
+        if (!cancelled) setThumbs({ ...next });
+      }
+    }, 150);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [image, preview, crop, screen]);
+
   const doExport = useCallback(
     async (kind: 'png' | 'jpeg' | 'share') => {
       if (!image) return;
@@ -150,8 +188,11 @@ export default function App() {
     setScreen('upload');
     setRendered(null);
     setSourcePreview(null);
+    setThumbs({});
     setStatus(null);
   }, []);
+
+  const countIn = (c: Category) => PRESETS.filter((p) => p.category === c).length;
 
   return (
     <div className="app">
@@ -164,13 +205,6 @@ export default function App() {
         <div className="spacer" />
         {screen !== 'upload' && (
           <>
-            <nav className="tabs" aria-label="Looks">
-              {PRESETS.map((p) => (
-                <button key={p.id} type="button" className={'tab' + (p.id === presetId ? ' active' : '')} aria-pressed={p.id === presetId} onClick={() => choosePreset(p.id)}>
-                  {p.name}
-                </button>
-              ))}
-            </nav>
             <button className="btn small" type="button" onClick={() => setScreen(screen === 'crop' ? 'edit' : 'crop')} aria-pressed={screen === 'crop'}>
               Crop
             </button>
@@ -183,20 +217,20 @@ export default function App() {
 
       {screen === 'upload' && (
         <main className="upload">
-          <h1>Your photos, three ways.</h1>
-          <p>A film grade, shape cut-outs and computer-vision overlays. Everything runs in your browser. Photos never leave your device.</p>
+          <h1>Your photo, {PRESETS.length} ways.</h1>
+          <p>Film and print looks inspired by the great photographers, a shape cut-out, and machine-vision overlays. Everything runs in your browser. Photos never leave your device.</p>
           <Dropzone onFile={onFile} busy={loading} error={loadError} />
-          <div className="looks" aria-label="Looks">
-            {PRESETS.map((p) => (
-              <div className="look" key={p.id}>
-                <b>{p.name}</b>
-                <span>{p.tagline}</span>
+          <div className="cat-grid" aria-label="Categories">
+            {CATEGORIES.filter((c) => c.id !== 'all').map((c) => (
+              <div className="look" key={c.id}>
+                <b>
+                  {c.label} · {countIn(c.id as Category)}
+                </b>
+                <span>{c.blurb}</span>
               </div>
             ))}
           </div>
-          <p className="fineprint">
-            Inspired by the colour, cut-out and computer-vision studies of Arihant Pradhan (skeletorwun.com). Independent project, not affiliated.
-          </p>
+          <p className="fineprint">{CREDITS}</p>
         </main>
       )}
 
@@ -232,7 +266,13 @@ export default function App() {
           </div>
           <aside className="panel">
             <div className="panel-scroll">
+              <LookStrip presets={PRESETS} activeId={presetId} thumbs={thumbs} category={category} onCategory={setCategory} onPick={choosePreset} />
               <h2>{preset.name}</h2>
+              {preset.inspiredBy && (
+                <p className="credit">
+                  Inspired by <b>{preset.inspiredBy}</b>
+                </p>
+              )}
               <p className="tagline">{preset.tagline}</p>
               <Controls controls={preset.controls} params={params} onChange={patchParams} />
               <div className="row" style={{ marginTop: 16 }}>

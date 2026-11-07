@@ -163,6 +163,8 @@ export async function renderDetect(input: RenderInput): Promise<AnyCanvas> {
 export const detectPreset: Preset = {
   id: 'detect',
   name: 'Detect',
+  category: 'vision',
+  thumbnail: false,
   tagline: 'Only what the detector recognises survives: labelled fragments on black.',
   defaults: DETECT_DEFAULTS,
   controls: [

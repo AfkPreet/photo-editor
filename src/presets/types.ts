@@ -47,6 +47,8 @@ export interface FileControl {
 export interface SectionControl {
   kind: 'section';
   label: string;
+  /** Collapsed by default in the panel. */
+  collapsed?: boolean;
 }
 export type Control = SliderControl | SelectControl | ToggleControl | ColorControl | ButtonControl | FileControl | SectionControl;
 
@@ -63,10 +65,17 @@ export interface RenderInput {
   signal?: AbortSignal;
 }
 
+export type Category = 'colour' | 'mono' | 'graphic' | 'vision';
+
 export interface Preset {
   id: string;
   name: string;
   tagline: string;
+  category: Category;
+  /** Photographers whose published work the look is inspired by (credit, not endorsement). */
+  inspiredBy?: string;
+  /** Render a live thumbnail of the user's photo in the look strip (default true). */
+  thumbnail?: boolean;
   defaults: Params;
   controls: Control[];
   /** Preferred crop aspect when the preset is first chosen (w/h), or undefined for original. */

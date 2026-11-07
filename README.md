@@ -1,11 +1,13 @@
 # Negative Space
 
-Your photos, three ways (four presets): a moody **film grade**, a **shape cut-out**
-diptych, **blob** overlays and **detection** fragments. Everything runs in the
-browser. Photos never leave the device.
+Your photo, 21 ways. Eighteen film and print **looks** inspired by well-known
+photographers (Kodachrome, dye transfer, zone system, are-bure-boke, platinum and
+more), a **shape cut-out** diptych, **blob** overlays and **detection** fragments.
+Everything runs in the browser. Photos never leave the device.
 
-Inspired by the colour, cut-out and computer-vision studies of Arihant Pradhan
-(skeletorwun.com). Independent project, not affiliated.
+Looks are interpretations built from our own curves and credited by name; the
+names are credits, not endorsements. The cut-out, blob and teal-grade ideas come
+from the studies at skeletorwun.com. Independent project, not affiliated.
 
 ## Run
 
@@ -34,13 +36,16 @@ The detector weights live in `public/models/` and are served with the site.
 
 ```
 src/
-  App.tsx            screens: upload → edit (preview + controls) / crop
+  App.tsx            screens: upload → edit (preview + look strip + controls) / crop
+  engine/            the film engine: curves, levels, blur/glow passes, grain, film.ts
   lib/               image loading, crop model, canvas + export helpers, PRNG
-  presets/           one file per look; each exports a Preset {defaults, controls, render}
-  ui/                Dropzone, CropEditor, Controls (schema-driven), Preview
+  presets/           looks.ts (18 looks as data), cutout, blobs, detect, registry
+  ui/                Dropzone, CropEditor, LookStrip, Controls (schema-driven), Preview
 public/models/       COCO-SSD lite_mobilenet_v2 (TF.js graph model)
 SPEC.md              decisions and scope
 ```
 
-Adding a preset: create `src/presets/<name>.ts` exporting a `Preset`, register it
-in `src/presets/index.ts`. Controls are declared as data; the UI renders them.
+Adding a look: add an entry to `LOOKS` in `src/presets/looks.ts` (name, credit,
+tagline, optional aspect, engine parameters). Adding a different kind of preset:
+create `src/presets/<name>.ts` exporting a `Preset`, register it in
+`src/presets/index.ts`. Controls are declared as data; the UI renders them.

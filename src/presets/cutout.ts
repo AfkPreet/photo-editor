@@ -1,7 +1,8 @@
 import { makeCanvas, ctx2d, type AnyCanvas } from '../lib/canvas';
 import { mulberry32, gaussian } from '../lib/random';
 import { shapePath, parseSvgShape, SHAPE_OPTIONS, type ShapeId } from './shapes';
-import { renderGrade, GRADE_DEFAULTS } from './grade';
+import { renderFilm } from '../engine/film';
+import { LOOKS, getLook, lookParams } from './looks';
 import type { Preset, Params, RenderInput } from './types';
 
 /**
@@ -25,7 +26,7 @@ export const CUTOUT_DEFAULTS: Params = {
   background: '#ffffff',
   maskColor: '#ffffff',
   gap: 0,
-  gradeFirst: false,
+  baseLook: 'none',
   seed: 11,
   customSvg: '',
 };
@@ -94,8 +95,10 @@ export async function renderCutout(input: RenderInput): Promise<AnyCanvas> {
     height = h2;
   }
 
-  if (params.gradeFirst) {
-    await renderGrade({ ...input, source, width, height, params: { ...GRADE_DEFAULTS, grain: 0.1 } });
+  const look = getLook(String(params.baseLook));
+  if (look) {
+    const bp = lookParams(look);
+    await renderFilm({ ...input, source, width, height, params: { ...bp, grain: Math.min(Number(bp.grain), 0.12), border: 0 } });
   }
 
   const placed = layoutShapes(params, width, height);
@@ -143,6 +146,8 @@ export async function renderCutout(input: RenderInput): Promise<AnyCanvas> {
 export const cutoutPreset: Preset = {
   id: 'cutout',
   name: 'Cut-out',
+  category: 'graphic',
+  inspiredBy: 'the Overlaid study at skeletorwun.com',
   tagline: 'A cluster of shapes: photo inside them on one side, masked out on the other.',
   defaults: CUTOUT_DEFAULTS,
   preferredAspect: 4 / 5,
@@ -171,7 +176,7 @@ export const cutoutPreset: Preset = {
     { kind: 'color', key: 'background', label: 'Cut-out background' },
     { kind: 'color', key: 'maskColor', label: 'Mask colour' },
     { kind: 'slider', key: 'gap', label: 'Gap between panels', min: 0, max: 0.1, step: 0.005 },
-    { kind: 'toggle', key: 'gradeFirst', label: 'Apply film grade first' },
+    { kind: 'select', key: 'baseLook', label: 'Apply a look first', options: [{ value: 'none', label: 'None (original colour)' }, ...LOOKS.map((l) => ({ value: l.id, label: l.name }))] },
   ],
   render: renderCutout,
 };
