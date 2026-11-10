@@ -66,6 +66,11 @@ interface Cached {
 }
 let cache: Cached | null = null;
 
+/** Forget detections from the previous photo. */
+export function resetDetectCache(): void {
+  cache = null;
+}
+
 function fingerprint(data: Uint8ClampedArray, w: number, h: number): string {
   let out = `${w}x${h}`;
   const n = 48;
@@ -73,7 +78,7 @@ function fingerprint(data: Uint8ClampedArray, w: number, h: number): string {
     const x = Math.floor(((i * 7919) % 1000) / 1000 * w);
     const y = Math.floor(((i * 104729) % 1000) / 1000 * h);
     const o = (y * w + x) * 4;
-    out += ',' + data[o] + data[o + 1] + data[o + 2];
+    out += `,${data[o]}.${data[o + 1]}.${data[o + 2]}`;
   }
   return out;
 }

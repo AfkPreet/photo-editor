@@ -1,7 +1,7 @@
-import { ctx2d, clamp, type AnyCanvas } from '../lib/canvas';
+import { ctx2d, clamp, yieldToUI, type AnyCanvas } from '../lib/canvas';
 import { buildToneLut, autoLevels, tintVector } from './curves';
 import { makeNoise, NOISE_SIZE } from './noise';
-import { blurredSmall, sampleSmall, softenCanvas, glowPass, addBorder } from './blur';
+import { blurredSmall, sampleSmallRGB, softenCanvas, glowPass, addBorder } from './blur';
 import type { Params, RenderInput } from '../presets/types';
 
 /**
@@ -68,8 +68,8 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
   if (intensity <= 0) return source;
   const unit = Math.max(width, height) / 1400;
 
-  // soft focus / diffusion (blurred copy mixed over the image)
-  const softness = Number(params.softness);
+  // soft focus / diffusion (blurred copy mixed over the image); scaled by intensity like every other pass
+  const softness = Number(params.softness) * intensity;
   if (softness > 0) softenCanvas(source, width, height, softness, 7 * unit);
 
   const ctx = ctx2d(source);
@@ -79,6 +79,7 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
   // local contrast needs a wide blur of the image
   const clarity = Number(params.clarity);
   const wide = clarity !== 0 ? blurredSmall(source as CanvasImageSource, width, height, 28 * unit) : null;
+  const wideRGB = new Float32Array(3);
 
   const lut = buildToneLut({
     contrast: Number(params.contrast),
@@ -102,10 +103,17 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
   let mixR = Number(params.mixRed);
   let mixG = Number(params.mixGreen);
   let mixB = Number(params.mixBlue);
-  const mixSum = mixR + mixG + mixB || 1;
-  mixR /= mixSum;
-  mixG /= mixSum;
-  mixB /= mixSum;
+  const mixSum = mixR + mixG + mixB;
+  if (mixSum <= 0.0001) {
+    // all three channels at zero would print solid black; fall back to a plain luma mix
+    mixR = 0.3;
+    mixG = 0.59;
+    mixB = 0.11;
+  } else {
+    mixR /= mixSum;
+    mixG /= mixSum;
+    mixB /= mixSum;
+  }
 
   const sat = Number(params.saturation);
   const vib = Number(params.vibrance);
@@ -121,7 +129,8 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
   const tinting = sStr > 0 || mStr > 0 || hStr > 0;
 
   const vig = Number(params.vignette);
-  const grain = Number(params.grain) * 0.22;
+  // grain amplitude fades out on tiny renders (look-strip thumbnails) where a grain cell would cover a tenth of the image
+  const grain = Number(params.grain) * 0.22 * Math.min(1, Math.max(width, height) / 1400);
   const grainPx = Math.max(0.6, Number(params.grainSize) * Math.max(1, Math.max(width, height) / 1400));
   const coarsePx = grainPx * 3.1;
   const noise = grain > 0 ? makeNoise(Number(params.seed) || 1) : null;
@@ -146,15 +155,20 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
 
     for (let x = 0; x < width; x++) {
       const o = (y * width + x) * 4;
-      let r0 = data[o] / 255;
-      let g0 = data[o + 1] / 255;
-      let b0 = data[o + 2] / 255;
+      // the untouched values are the reference the intensity slider blends back toward
+      const sr = data[o] / 255;
+      const sg = data[o + 1] / 255;
+      const sb = data[o + 2] / 255;
+      let r0 = sr;
+      let g0 = sg;
+      let b0 = sb;
 
       // local contrast (clarity): push away from the wide blur
       if (wide) {
-        r0 = clamp(r0 + clarity * (r0 - sampleSmall(wide, x, y, 0) / 255), 0, 1);
-        g0 = clamp(g0 + clarity * (g0 - sampleSmall(wide, x, y, 1) / 255), 0, 1);
-        b0 = clamp(b0 + clarity * (b0 - sampleSmall(wide, x, y, 2) / 255), 0, 1);
+        sampleSmallRGB(wide, x, y, wideRGB);
+        r0 = clamp(sr + clarity * (sr - wideRGB[0] / 255), 0, 1);
+        g0 = clamp(sg + clarity * (sg - wideRGB[1] / 255), 0, 1);
+        b0 = clamp(sb + clarity * (sb - wideRGB[2] / 255), 0, 1);
       }
 
       // auto contrast then white balance
@@ -250,25 +264,29 @@ export async function renderFilm(input: RenderInput): Promise<AnyCanvas> {
       }
 
       if (intensity < 1) {
-        r = r0 + (r - r0) * intensity;
-        g = g0 + (g - g0) * intensity;
-        b = b0 + (b - b0) * intensity;
+        r = sr + (r - sr) * intensity;
+        g = sg + (g - sg) * intensity;
+        b = sb + (b - sb) * intensity;
       }
       data[o] = r <= 0 ? 0 : r >= 1 ? 255 : (r * 255 + 0.5) | 0;
       data[o + 1] = g <= 0 ? 0 : g >= 1 ? 255 : (g * 255 + 0.5) | 0;
       data[o + 2] = b <= 0 ? 0 : b >= 1 ? 255 : (b * 255 + 0.5) | 0;
     }
-    if (input.signal?.aborted) throw new DOMException('Render cancelled', 'AbortError');
+    // every 64 rows: let the UI paint and honour cancellation (slider drags re-render constantly)
+    if ((y & 63) === 63) {
+      await yieldToUI();
+      if (input.signal?.aborted) throw new DOMException('Render cancelled', 'AbortError');
+    }
   }
   ctx.putImageData(img, 0, 0);
 
   // glows: bloom lifts highlights softly, halation bleeds warm light around them
-  const bloom = Number(params.bloom);
+  const bloom = Number(params.bloom) * intensity;
   if (bloom > 0) glowPass(source, width, height, { threshold: Number(params.bloomThreshold), radius: 18 * unit * Number(params.bloomRadius), strength: bloom, mode: 'screen' });
-  const halation = Number(params.halation);
+  const halation = Number(params.halation) * intensity;
   if (halation > 0) glowPass(source, width, height, { threshold: 0.72, radius: 10 * unit, strength: halation, tint: [1, 0.32, 0.12], mode: 'lighter' });
 
-  const border = Number(params.border);
+  const border = Number(params.border) * intensity;
   if (border > 0) return addBorder(source, width, height, border, String(params.borderColor));
   return source;
 }

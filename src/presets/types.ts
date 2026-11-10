@@ -76,6 +76,8 @@ export interface Preset {
   inspiredBy?: string;
   /** Render a live thumbnail of the user's photo in the look strip (default true). */
   thumbnail?: boolean;
+  /** Parameter overrides used only for the strip thumbnail (e.g. a single panel instead of a diptych). */
+  thumbnailParams?: Params;
   defaults: Params;
   controls: Control[];
   /** Preferred crop aspect when the preset is first chosen (w/h), or undefined for original. */

@@ -30,6 +30,27 @@ Owner: Preet (afkpreet/photo-editor). Built with Claude Code, Nov 2026.
 | 13 | Collapsible control groups, Tone open by default | One long slider list | 45 sliders per look is a wall; grouped, the common ones stay one tap away |
 | 14 | Clarity, soft focus, bloom and halation run on a ≤320 px downscale and are composited back | Full-resolution blurs | Same look, 20× cheaper; iPad exports stay around a second |
 | 15 | Detect keeps a static icon instead of a live thumbnail | Running the model for the strip | Loading 18 MB and running inference just to draw a 92 px card is not worth it |
+| 16 | Share is two taps: first renders and prepares the file, second opens the share sheet | One tap that renders then shares | Browsers expire the tap's activation within seconds; a full-size render can take longer, so the sheet silently fails |
+| 17 | One canvas cap (16 MP) enforced on every output, including borders and diptychs | Capping only the loaded photo | iOS Safari refuses larger canvases and exports come out blank |
+| 18 | Renders yield to the browser every 64 rows and honour cancellation | One synchronous loop | Slider drags stay responsive and the busy label actually paints |
+| 19 | Plain toggle buttons for categories, looks and aspect chips | ARIA listbox/tab/radio roles | Those roles promise arrow-key navigation we do not implement; honest buttons are better than half a pattern |
+| 20 | A look's preferred frame follows the photo's orientation (4:5 becomes 5:4 on a landscape photo) | Fixed ratio | A portrait crop forced onto a landscape photo throws most of it away |
+
+### Review (Nov 2026)
+
+A five-dimension review (engine maths, React state, browser compatibility,
+usability/accessibility, preset data) produced 32 findings; the verifier pass
+confirmed 5 before hitting a usage limit and the rest were adjudicated by hand.
+All 32 were fixed in the follow-up commit: intensity now blends toward the
+untouched photo and scales soft focus, bloom, halation and border; thumbnails
+attenuate grain; an all-zero mono mixer falls back to luma; clarity samples the
+blur once per pixel; renders yield and cancel; borders and diptychs respect the
+canvas cap; sharing is two-step with cancel detection; the crop editor supports
+pinch, keyboard nudging and position sliders and measures its scale live; file
+input, hold-to-compare and live regions are keyboard and screen-reader
+friendly; touch targets grow on coarse pointers; look names wrap to two lines;
+long filenames truncate; the detect cache key is unambiguous and resets per
+photo; the cut-out thumbnail shows a single panel.
 
 ### Looks
 

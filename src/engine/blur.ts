@@ -1,4 +1,4 @@
-import { makeCanvas, ctx2d, type AnyCanvas } from '../lib/canvas';
+import { makeCanvas, ctx2d, MAX_CANVAS_PIXELS, type AnyCanvas } from '../lib/canvas';
 
 /** Separable box blur, three passes (≈ gaussian), in place on RGBA bytes. */
 export function boxBlur(data: Uint8ClampedArray, w: number, h: number, radius: number, passes = 3): void {
@@ -78,6 +78,28 @@ export function sampleSmall(s: SmallBlur, x: number, y: number, c: number): numb
   return (s.data[i00] * (1 - tx) + s.data[i10] * tx) * (1 - ty) + (s.data[i01] * (1 - tx) + s.data[i11] * tx) * ty;
 }
 
+/** Bilinear sample of all three channels at once (one set of weights per pixel). */
+export function sampleSmallRGB(s: SmallBlur, x: number, y: number, out: Float32Array): void {
+  const fx = Math.min(s.w - 1.001, Math.max(0, x * s.scale));
+  const fy = Math.min(s.h - 1.001, Math.max(0, y * s.scale));
+  const x0 = fx | 0;
+  const y0 = fy | 0;
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const i00 = (y0 * s.w + x0) * 4;
+  const i10 = i00 + 4;
+  const i01 = i00 + s.w * 4;
+  const i11 = i01 + 4;
+  const w00 = (1 - tx) * (1 - ty);
+  const w10 = tx * (1 - ty);
+  const w01 = (1 - tx) * ty;
+  const w11 = tx * ty;
+  const d = s.data;
+  out[0] = d[i00] * w00 + d[i10] * w10 + d[i01] * w01 + d[i11] * w11;
+  out[1] = d[i00 + 1] * w00 + d[i10 + 1] * w10 + d[i01 + 1] * w01 + d[i11 + 1] * w11;
+  out[2] = d[i00 + 2] * w00 + d[i10 + 2] * w10 + d[i01 + 2] * w01 + d[i11 + 2] * w11;
+}
+
 /** Mix a blurred copy over the canvas (diffusion / soft focus). */
 export function softenCanvas(canvas: AnyCanvas, width: number, height: number, amount: number, radius: number): void {
   if (amount <= 0) return;
@@ -132,14 +154,24 @@ export function glowPass(canvas: AnyCanvas, width: number, height: number, opt: 
   ctx.restore();
 }
 
-/** Return a new canvas with a flat border around the image. */
+/** Return a new canvas with a flat border around the image, shrinking the photo if the result would exceed the canvas cap. */
 export function addBorder(canvas: AnyCanvas, width: number, height: number, fraction: number, color: string): AnyCanvas {
-  const b = Math.round(Math.min(width, height) * fraction);
+  let w = width;
+  let h = height;
+  let b = Math.round(Math.min(w, h) * fraction);
   if (b <= 0) return canvas;
-  const out = makeCanvas(width + b * 2, height + b * 2);
+  if ((w + 2 * b) * (h + 2 * b) > MAX_CANVAS_PIXELS) {
+    const k = Math.sqrt(MAX_CANVAS_PIXELS / ((w + 2 * b) * (h + 2 * b)));
+    w = Math.floor(w * k);
+    h = Math.floor(h * k);
+    b = Math.round(Math.min(w, h) * fraction);
+  }
+  const out = makeCanvas(w + b * 2, h + b * 2);
   const ctx = ctx2d(out);
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, out.width, out.height);
-  ctx.drawImage(canvas as CanvasImageSource, b, b);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(canvas as CanvasImageSource, b, b, w, h);
   return out;
 }

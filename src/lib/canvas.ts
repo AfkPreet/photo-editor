@@ -1,4 +1,12 @@
 export type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
+
+/** Largest canvas we ever create: keeps every output inside iOS Safari's 16.7 MP backing-store limit. */
+export const MAX_CANVAS_PIXELS = 16_000_000;
+
+/** Let the browser paint and handle input between heavy chunks of work. */
+export function yieldToUI(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 /** Create a canvas; OffscreenCanvas when available (workers, Safari 16.4+). */

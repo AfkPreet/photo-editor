@@ -1,4 +1,4 @@
-import { makeCanvas, ctx2d, type AnyCanvas } from './canvas';
+import { makeCanvas, ctx2d, MAX_CANVAS_PIXELS, type AnyCanvas } from './canvas';
 
 export interface LoadedImage {
   name: string;
@@ -13,8 +13,8 @@ export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/a
 /** Longest edge for the interactive preview. Export always uses the full bitmap. */
 export const PREVIEW_MAX = 1400;
 
-/** Guard for very large photos: 16 MP keeps canvases inside Safari limits and iPad memory sane. */
-const MAX_PIXELS = 16_000_000;
+/** Guard for very large photos: keeps canvases inside Safari limits and iPad memory sane. */
+const MAX_PIXELS = MAX_CANVAS_PIXELS;
 
 export async function loadImageFile(file: File): Promise<LoadedImage> {
   if (!file.type.startsWith('image/')) throw new Error('That file is not an image.');
@@ -89,14 +89,15 @@ export function canShareFiles(): boolean {
   return typeof navigator !== 'undefined' && !!navigator.share && !!navigator.canShare;
 }
 
-export async function shareBlob(blob: Blob, filename: string, title: string): Promise<boolean> {
-  const file = new File([blob], filename, { type: blob.type });
-  if (!navigator.canShare?.({ files: [file] })) return false;
+export type ShareResult = 'shared' | 'cancelled' | 'unsupported';
+
+/** Must be called synchronously inside a user gesture: browsers expire share activation within seconds. */
+export async function shareFile(file: File, title: string): Promise<ShareResult> {
+  if (!navigator.canShare?.({ files: [file] })) return 'unsupported';
   try {
     await navigator.share({ files: [file], title });
-    return true;
+    return 'shared';
   } catch (err) {
-    if ((err as DOMException).name === 'AbortError') return true;
-    return false;
+    return (err as DOMException).name === 'AbortError' ? 'cancelled' : 'unsupported';
   }
 }

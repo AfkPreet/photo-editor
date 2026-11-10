@@ -27,11 +27,9 @@ export function Preview({ canvas, compareCanvas, compare, busy, error }: Props) 
     <>
       <canvas ref={ref} aria-label="Preview" data-testid="preview" />
       {compare && <div className="label">Original</div>}
-      {busy && (
-        <div className="busy" role="status">
-          {busy}
-        </div>
-      )}
+      <div className={'busy' + (busy ? '' : ' empty')} role="status" aria-live="polite">
+        {busy ?? ''}
+      </div>
       {error && (
         <div className="error" role="alert">
           {error}

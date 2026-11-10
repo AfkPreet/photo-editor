@@ -1,4 +1,4 @@
-import { makeCanvas, ctx2d, type AnyCanvas } from '../lib/canvas';
+import { makeCanvas, ctx2d, MAX_CANVAS_PIXELS, type AnyCanvas } from '../lib/canvas';
 import { mulberry32, gaussian } from '../lib/random';
 import { shapePath, parseSvgShape, SHAPE_OPTIONS, type ShapeId } from './shapes';
 import { renderFilm } from '../engine/film';
@@ -81,9 +81,10 @@ export async function renderCutout(input: RenderInput): Promise<AnyCanvas> {
   // Keep the diptych inside Safari's canvas limits on export.
   const layout = String(params.layout);
   const panels = layout === 'diptych' ? 2 : 1;
-  const maxPixels = 16_000_000;
-  if (width * height * panels > maxPixels) {
-    const k = Math.sqrt(maxPixels / (width * height * panels));
+  const gapFraction = panels === 2 ? Number(params.gap) : 0;
+  const footprint = width * (panels + gapFraction) * height;
+  if (footprint > MAX_CANVAS_PIXELS) {
+    const k = Math.sqrt(MAX_CANVAS_PIXELS / footprint);
     const w2 = Math.floor(width * k);
     const h2 = Math.floor(height * k);
     const c = makeCanvas(w2, h2);
@@ -151,6 +152,7 @@ export const cutoutPreset: Preset = {
   tagline: 'A cluster of shapes: photo inside them on one side, masked out on the other.',
   defaults: CUTOUT_DEFAULTS,
   preferredAspect: 4 / 5,
+  thumbnailParams: { layout: 'cutout' },
   controls: [
     { kind: 'select', key: 'shape', label: 'Shape', options: SHAPE_OPTIONS },
     { kind: 'file', key: 'customSvg', label: 'Load custom SVG shape…', accept: '.svg,image/svg+xml', parse: (text) => {

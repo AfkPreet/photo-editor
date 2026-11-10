@@ -24,6 +24,7 @@ function Thumb({ canvas }: { canvas?: AnyCanvas }) {
   return <canvas ref={ref} className={canvas ? 'thumb' : 'thumb empty'} aria-hidden="true" />;
 }
 
+/** Category chips and the horizontally scrolling strip of look cards. Plain toggle buttons: one Tab stop each, honest semantics. */
 export function LookStrip({ presets, activeId, thumbs, category, onCategory, onPick }: Props) {
   const stripRef = useRef<HTMLDivElement>(null);
   const shown = presets.filter((p) => category === 'all' || p.category === category);
@@ -41,20 +42,19 @@ export function LookStrip({ presets, activeId, thumbs, category, onCategory, onP
 
   return (
     <div className="lookbar">
-      <div className="cats" role="tablist" aria-label="Look categories">
+      <div className="cats" role="group" aria-label="Look categories">
         {CATEGORIES.map((c) => (
-          <button key={c.id} type="button" role="tab" aria-selected={category === c.id} className={'chip' + (category === c.id ? ' active' : '')} onClick={() => onCategory(c.id)} title={c.blurb}>
+          <button key={c.id} type="button" aria-pressed={category === c.id} className={'chip' + (category === c.id ? ' active' : '')} onClick={() => onCategory(c.id)} title={c.blurb}>
             {c.label}
           </button>
         ))}
       </div>
-      <div className="lookstrip" ref={stripRef} role="listbox" aria-label="Looks">
+      <div className="lookstrip" ref={stripRef} role="group" aria-label="Looks">
         {shown.map((p) => (
           <button
             key={p.id}
             type="button"
-            role="option"
-            aria-selected={p.id === activeId}
+            aria-pressed={p.id === activeId}
             aria-label={p.name}
             data-id={p.id}
             className={'look-card' + (p.id === activeId ? ' active' : '')}
